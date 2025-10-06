@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>One Page Report Generator</title>
+  <link rel="stylesheet" href="assets/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-content">
+      <h1>One Page Report Generator</h1>
+      <p>Create executive-ready one pagers with traffic lights, deltas, and blockers directly from Smartsheet trackers and meeting notes.</p>
+    </div>
+    <div class="header-actions">
+      <button id="generate-report" class="primary">Generate Report</button>
+      <div class="export-buttons">
+        <button id="export-pdf">Export PDF</button>
+        <button id="export-ppt">Export PPT</button>
+        <button id="export-docx">Export DOCX</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-grid">
+    <section class="panel">
+      <h2>1. Smartsheet Connection</h2>
+      <p class="hint">Use a Smartsheet API access token with read permissions. Nothing is stored on our servers.</p>
+      <label>Access token
+        <input type="password" id="smartsheet-token" placeholder="smartsheet-access-token" autocomplete="off" />
+      </label>
+      <label>Sheet ID
+        <input type="text" id="smartsheet-sheet-id" placeholder="1234567890" />
+      </label>
+      <label>Optional CORS proxy template
+        <input type="text" id="smartsheet-proxy" placeholder="https://your-proxy.example.com/{target}" />
+      </label>
+      <p class="hint hint-small">If you see “Failed to fetch”, add a proxy URL that includes a <code>{target}</code> placeholder. The placeholder is replaced with the Smartsheet API URL.</p>
+      <details class="mapping">
+        <summary>Column mapping</summary>
+        <div class="mapping-grid">
+          <label>Key Result column
+            <input type="text" id="column-key-result" placeholder="Key Result" />
+          </label>
+          <label>Status column
+            <input type="text" id="column-status" placeholder="Status" />
+          </label>
+          <label>Delta column
+            <input type="text" id="column-delta" placeholder="Delta vs Last Week" />
+          </label>
+          <label>Blockers column
+            <input type="text" id="column-blockers" placeholder="Blockers" />
+          </label>
+          <label>Owner column (optional)
+            <input type="text" id="column-owner" placeholder="Owner" />
+          </label>
+        </div>
+      </details>
+      <button id="load-smartsheet" class="secondary">Load sheet</button>
+      <p id="smartsheet-status" class="status-message"></p>
+    </section>
+
+    <section class="panel">
+      <h2>2. Meeting notes</h2>
+      <p class="hint">Paste notes or pull from a shared Google Doc (must allow "Anyone with the link").</p>
+      <label>Google Doc ID
+        <input type="text" id="google-doc-id" placeholder="e.g. 1A2B3C4D..." />
+      </label>
+      <div class="inline-actions">
+        <button id="load-google-doc" class="secondary">Load Google Doc</button>
+        <span id="google-doc-status" class="status-message"></span>
+      </div>
+      <label>Meeting notes
+        <textarea id="meeting-notes" rows="12" placeholder="Paste notes here..."></textarea>
+      </label>
+    </section>
+
+    <section class="panel">
+      <h2>3. Tone & narrative</h2>
+      <label for="tone-select">Tone</label>
+      <select id="tone-select">
+        <option value="executive">Executive (concise, data first)</option>
+        <option value="team">Team (collaborative, action oriented)</option>
+        <option value="detailed">Detailed (context rich)</option>
+        <option value="custom">Custom</option>
+      </select>
+      <label id="custom-tone-wrapper" class="hidden">Custom tone prompt
+        <input type="text" id="custom-tone-input" placeholder="e.g. optimistic, inspirational" />
+      </label>
+      <label>Key outcomes emphasis
+        <input type="text" id="tone-emphasis" placeholder="e.g. Emphasize customer impact and schedule risk" />
+      </label>
+      <div class="ideas">
+        <h3>Ideas to elevate your one pager</h3>
+        <ul>
+          <li>Auto-track week-over-week movement by pairing Smartsheet history data.</li>
+          <li>Suggest mitigations for blockers using similar past entries.</li>
+          <li>Generate targeted follow-up tasks in Jira, Asana, or Teams.</li>
+          <li>Provide stakeholder-specific variants (e.g., Sales vs Engineering).</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel report" id="report-panel">
+      <h2>One Page Summary</h2>
+      <div id="report-warning" class="status-message hidden"></div>
+      <article id="report-content" class="report-content">
+        <p class="hint">Load data and click "Generate Report" to see your one page summary.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Built for GitHub Pages — no servers, just client-side generation. Keep your access tokens safe by revoking when finished.</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/3aRymNEzbGDbVS9/6uzxhpcJn/qdNqxabWWMwBLT/gRghOAqxCLv7saEh1PQuPgzpTUN324j6nUdfbWFzR4xA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.14.0/dist/pptxgen.bundle.js" integrity="sha384-vpbMkYG14TQXBsMf5E5zrGNmbE46cMfYbM8xOp6U17ZT/6J6oTQA1S6wN2MB+t5G" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.3.3/docx.min.js" integrity="sha512-AEx14N/2zsr1MS11r9m8cLeNTEFzS9LtYkXDBZkzME2YkdE+5EYXPLkZX31lrT7xvFeoJEBhDigw1k3DybMT0A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="module" src="assets/app.js"></script>
+</body>
+</html>
