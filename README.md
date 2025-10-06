@@ -23,7 +23,52 @@ A zero-backend tool that turns Smartsheet trackers and meeting notes into execut
 
 1. Generate a Smartsheet API access token with read permissions.
 2. Enter the token and sheet ID, then map the relevant column titles (status, delta, blockers, owner).
-3. Click **Load sheet** – data stays in the browser only.
+3. (Optional) If Smartsheet rejects the browser request with “Failed to fetch”, add a proxy template URL that includes a `{target}` placeholder. The app replaces the placeholder with the Smartsheet API endpoint.
+4. Click **Load sheet** – data stays in the browser only.
+
+#### Setting up a personal CORS proxy
+
+Smartsheet's public API does not return the CORS headers required for direct browser calls. When this happens the app will surface a message suggesting a proxy. The quickest approach is to deploy a free [Cloudflare Worker](https://developers.cloudflare.com/workers/) and point the **Optional CORS proxy template** field to it (e.g. `https://your-worker.workers.dev/?target={target}`).
+
+```js
+export default {
+  async fetch(request) {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET,OPTIONS',
+          'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') ?? 'authorization,accept',
+        },
+      });
+    }
+
+    const url = new URL(request.url);
+    const target = url.searchParams.get('target');
+    if (!target) {
+      return new Response('Missing target parameter', { status: 400 });
+    }
+
+    const upstream = await fetch(target, {
+      headers: {
+        Authorization: request.headers.get('Authorization') ?? '',
+        Accept: 'application/json',
+      },
+    });
+
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': upstream.headers.get('Content-Type') ?? 'application/json',
+      },
+    });
+  },
+};
+```
+
+Publish the worker and paste its URL (with `{target}`) into the Smartsheet panel. The access token remains in the Authorization header and is only transmitted to your worker and Smartsheet.
 
 ### Google Docs
 
@@ -41,6 +86,7 @@ A zero-backend tool that turns Smartsheet trackers and meeting notes into execut
 
 - No credentials are persisted or sent to a backend; everything runs within your browser session.
 - Revoke API tokens when you are done.
+- When using a custom proxy, host it under your control. Third-party proxies can log your Smartsheet access token.
 
 ## 💡 Future enhancements
 

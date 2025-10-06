@@ -196,6 +196,11 @@ textarea {
   font-size: 0.95rem;
 }
 
+.hint-small {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 .hidden {
   display: none !important;
 }

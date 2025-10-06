@@ -7,6 +7,7 @@ const state = {
 const elements = {
   smartsheetToken: document.getElementById('smartsheet-token'),
   smartsheetSheetId: document.getElementById('smartsheet-sheet-id'),
+  smartsheetProxy: document.getElementById('smartsheet-proxy'),
   loadSmartsheet: document.getElementById('load-smartsheet'),
   smartsheetStatus: document.getElementById('smartsheet-status'),
   columnKeyResult: document.getElementById('column-key-result'),
@@ -33,6 +34,7 @@ const elements = {
 elements.loadSmartsheet.addEventListener('click', async () => {
   const token = elements.smartsheetToken.value.trim();
   const sheetId = elements.smartsheetSheetId.value.trim();
+  const proxyTemplate = elements.smartsheetProxy.value.trim();
 
   if (!token || !sheetId) {
     setStatus(elements.smartsheetStatus, 'Provide both access token and sheet ID.', 'error');
@@ -43,7 +45,7 @@ elements.loadSmartsheet.addEventListener('click', async () => {
   elements.loadSmartsheet.disabled = true;
 
   try {
-    const sheet = await fetchSmartsheetSheet(token, sheetId);
+    const sheet = await fetchSmartsheetSheet(token, sheetId, proxyTemplate);
     state.sheet = sheet;
     setStatus(elements.smartsheetStatus, `Loaded \"${sheet.name}\" with ${sheet.totalRowCount} rows.`, 'success');
   } catch (error) {
@@ -124,13 +126,25 @@ function setStatus(element, message, kind = '') {
   }
 }
 
-async function fetchSmartsheetSheet(token, sheetId) {
-  const response = await fetch(`https://api.smartsheet.com/2.0/sheets/${encodeURIComponent(sheetId)}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-  });
+async function fetchSmartsheetSheet(token, sheetId, proxyTemplate = '') {
+  const apiUrl = `https://api.smartsheet.com/2.0/sheets/${encodeURIComponent(sheetId)}`;
+  const requestUrl = buildProxiedUrl(apiUrl, proxyTemplate);
+
+  let response;
+  try {
+    response = await fetch(requestUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+  } catch (networkError) {
+    console.error(networkError);
+    if (!proxyTemplate) {
+      throw new Error('Network request failed. Smartsheet blocks browser requests without CORS headers. Configure a proxy URL in the Optional CORS proxy field (see README).');
+    }
+    throw new Error('Network request failed even with the provided proxy. Ensure it forwards requests and allows Authorization headers.');
+  }
 
   if (!response.ok) {
     let message = `Smartsheet request failed (${response.status})`;
@@ -146,6 +160,27 @@ async function fetchSmartsheetSheet(token, sheetId) {
   }
 
   return response.json();
+}
+
+function buildProxiedUrl(apiUrl, proxyTemplate) {
+  if (!proxyTemplate) {
+    return apiUrl;
+  }
+
+  const trimmed = proxyTemplate.trim();
+  if (!trimmed) {
+    return apiUrl;
+  }
+
+  if (trimmed.includes('{target}')) {
+    return trimmed.replace('{target}', encodeURIComponent(apiUrl));
+  }
+
+  if (trimmed.endsWith('/')) {
+    return `${trimmed}${apiUrl}`;
+  }
+
+  return `${trimmed}/${apiUrl}`;
 }
 
 async function fetchGoogleDoc(docId) {

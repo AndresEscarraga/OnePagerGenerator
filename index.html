@@ -35,6 +35,10 @@
       <label>Sheet ID
         <input type="text" id="smartsheet-sheet-id" placeholder="1234567890" />
       </label>
+      <label>Optional CORS proxy template
+        <input type="text" id="smartsheet-proxy" placeholder="https://your-proxy.example.com/{target}" />
+      </label>
+      <p class="hint hint-small">If you see “Failed to fetch”, add a proxy URL that includes a <code>{target}</code> placeholder. The placeholder is replaced with the Smartsheet API URL.</p>
       <details class="mapping">
         <summary>Column mapping</summary>
         <div class="mapping-grid">
